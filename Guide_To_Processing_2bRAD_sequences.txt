@@ -1,0 +1,138 @@
+***Installing needed tools**********************************************************************************
+
+***Important note: If linux is not recognizing your commands, ensure they are in the search path of the shell. You can safely temporarily add the 
+        present working directory (pwd) using the command:
+            
+            export PATH=$PATH:$(pwd)
+
+Before moving on it may help to make sure you have "make" installed,
+    "build-essential" installed, and the Zlib 
+    development package
+    
+    sudo apt install make
+    sudo apt install build-essential
+    sudo apt install zlib1g-dev
+
+---Installing fastqc in Ubuntu/Linux
+
+	sudo apt install fastqc
+
+---Installing cutadapt
+
+	sudo apt install cutadapt
+
+---Installing STACKS
+
+Download the STACKS software from the website
+
+    https://catchenlab.life.illinois.edu/stacks/
+    
+In linux (I'm using the Ubuntu app on Windows 11) navigate to the directory 
+    containing the downloaded file. In this directory we will unpack and install
+    the program using the below commands found on the website below
+    
+    https://catchenlab.life.illinois.edu/stacks/manual/#install
+    
+    tar xfvz stacks-2.xx.tar.gz    #Replace x's with your version number
+    cd stacks-2.xx
+    ./configure --prefix=/home/jes8x/       #the --prefix option will allow you
+    make                                        specifiy the directory where
+                                                STACKS will be installed. For me this     
+    make install                                is my /home/jes8x/ directory
+    
+
+***Using installed tools**************************************************************************************
+
+Find and unzip 2b-RAD sequences (For this using only the forward reads of my Symbiodinium sequences)
+    Make a folder on your desktop and place these sequences into it
+    Change the names of the files if it helps simplify typing them, BUT keep sequence identifiers with each sequence
+    Remove any files from folder that do not have any data in them (i.e. 0 bytes)
+    
+
+    
+Create a text file (.txt) in this folder titled "popmap.txt" **I had to make this in notepad for it to work properly
+    For my analysis I did not know the population distributions so I placed each samples into a seperate population
+        Format it with Sample_name<tab>population#
+        **Make sure these names match your sample sequence file names exactly
+        Here is an example of how to format it:
+        
+        JES201  1
+        JES202  2
+        JES203  3
+        JES204  4
+        JES205  5
+        JES206  6
+        
+In your stacks directory make a directory name "samples," "popmaps," and "stacks"
+
+    mkdir samples
+    mkdir popmaps
+    mkdir stacks        
+
+        
+Copy sequence files to the "samples" directory in the stacks directoy
+Copy the popmap to "popmaps" directory in stacks directory
+	examples of copying files from one directory to another:
+	
+	cp JES201.fastq /home/jes8x/stacks/samples	#This moves the file "JES201" from the current directory to the samples
+								directory inside of the stacks directory
+
+While in the samples directory run cutadapt on each samples using the following command line input to get ONLY 36bp fragments
+    The adapter in the input is the forward adapter used in our 2b-RAD sequencing run for the forward reads 
+    
+    cutadapt command:
+    
+    cutadapt -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA -m 36 -M 36 -o JES2016_R1_36bp_trim.fastq JES2016_R1.fastq
+    
+    Make sure to copy the files back to the desktop folder so you can open them graphically
+    Also, move untrimmed sequences out of the "samples" directory in stacks
+    
+-------------Quality check--------------
+
+
+Once fastqc is installed navigate to the directory containing your trimmed sequence files and run the command for fastqc
+    Command for running fastqc in ubuntu(linux):
+    
+        fastqc *36bp_trim.fastq
+        
+        The "*" runs the command as a wild card and will search for any file ending with this
+        The output of the fastqc html will be in the folder/directory where your samples are imported from 
+        
+ 
+------------Aligning Using a Denovo reference
+
+Ensure trimmed sample sequences are in the samples directory and the popmap is in the popmaps directory
+
+    Once sequences and popmap are in the correct directories and stacks directory is made, run the denovomap program using the below command:
+        
+        denovo_map.pl -T 8 -M 4 -o ./stacks/ --samples ./samples --popmap ./popmaps/popmap.txt
+        
+
+-----------Exporting alignments-----------
+
+    When exporting for use in R and PCAs you want to export as genpop file. This is because structure outputs make two entries for each sample and this
+        is not compatible with creating a data frame in R
+        
+    
+Exporting in genpop:
+
+    populations -P ./stacks --genepop -M ./popmaps/popmap.txt -O /mnt/c/users/ranou/desktop/GenePop_out     # -O indicates where you want the output to go
+    
+    
+Exporting for structure
+
+    populations -P ./stacks -M ./popmaps/popmap.txt -O /mnt/c/users/ranou/desktop/Structure_out --write-single-snp --structure     #structure does not like linked SNPs so 
+                                                                                                                                    we also use the option "-write_single_snp" 
+                                                                                                                                    to write only one SNP per locus
+                                                                                                                                    #Also be aware that the guide to stacks says   
+                                                                                                                                        the command is --write_single_snp but the command
+                                                                                                                                        is actually --write-single-snp
+                                                        
+            *Once you have the populations.structure output file make sure to remove the first line of the file or else structure will not recognize it
+
+
+Exporting in phylip format
+    
+    populations -P ./stacks --phylip -M ./popmaps/popmap.txt -O /mnt/c/users/ranou/desktop/Zoa_Phylip
+
+
